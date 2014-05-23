@@ -62,10 +62,10 @@ function drush_make_diff($old_makefile, $new_makefile) {
     }
     else {
       // Version changes
-      if ($info['new']['version'] > $info['old']['version']) {
+      if (version_compare($info['new']['version'], $info['old']['version'], '>')) {
         $list[$name]['notices']['version'] = 'version upgraded';
       }
-      elseif ($info['old']['version'] > $info['new']['version']) {
+      elseif (version_compare($info['old']['version'], $info['new']['version'], '>')) {
         $list[$name]['notices']['version'] = 'WARNING! version downgraded';
       }
       // Patch changes
