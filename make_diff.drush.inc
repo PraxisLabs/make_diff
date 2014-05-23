@@ -36,29 +36,72 @@ function drush_make_diff($old_makefile, $new_makefile) {
   if (!make_validate_info_file($old_info) || !make_validate_info_file($new_info)) {
     return FALSE;
   }
-  // Filter down to just projects and versions
-  $diff = array('header' => array('Project','Old version','New version'));
-  foreach ($old_info['projects'] as $name => $info) {
-    $diff[$name]['name'] = $name;
-    $diff[$name]['old'] = $info['version'];
+
+  // Merge our lists
+  $list = array_keys(array_merge($old_info['projects'], $new_info['projects']));
+  foreach ($list as $key => $name) {
+    if (isset($old_info['projects'][$name])) {
+      $list[$name]['old'] = $old_info['projects'][$name];
+    }
+    if (isset($new_info['projects'][$name])) {
+      $list[$name]['new'] = $new_info['projects'][$name];
+    }
+    unset($list[$key]);
   }
-  foreach ($new_info['projects'] as $name => $info) {
-    // Ignore packages with the same version
-    if (isset($diff[$name]) && $info['version'] == $diff[$name]['old']) {
-      unset($diff[$name]);
+
+  // Check for version and other differences.
+  foreach ($list as $name => $info) {
+    $list[$name]['notices'] = array();
+
+    // Project add or removed
+    if (isset($info['new']) && !isset($info['old'])) {
+      $list[$name]['notices'][] = 'new project added';
+    }
+    elseif (!isset($info['new']) && isset($info['old'])) {
+      $list[$name]['notices'][] = 'project removed';
+    }
+    else {
+      // Version changes
+      if ($info['new']['version'] > $info['old']['version']) {
+        $list[$name]['notices']['version'] = 'version upgraded';
+      }
+      elseif ($info['old']['version'] > $info['new']['version']) {
+        $list[$name]['notices']['version'] = 'WARNING! version downgraded';
+      }
+      // Patch changes
+      if (isset($info['new']['patch']) || isset($info['old']['patch'])) {
+        if ($info['new']['patch'] !== $info['old']['patch']) {
+          $list[$name]['notices']['patch'] = 'patches changed';
+        }
+      }
+      // VCS changes
+      if (isset($info['new']['download']) || isset($info['old']['download'])) {
+        if ($info['new']['download'] !== $info['old']['download']) {
+          $list[$name]['notices']['download'] = 'download changed';
+        }
+      }
+    }
+  }
+
+  // Filter down to just projects, versions and notices
+  $diff = array('header' => array('Project','Old version','New version','Notices'));
+  foreach ($list as $name => $info) {
+    if (empty($info['notices'])) {
       continue;
     }
-    $diff[$name]['new'] = $info['version'];
-    if ($info['version'] < $diff[$name]['old']) {
-      $diff[$name]['notes'] = 'WARNING: version downgrade!';
-    }
+    $diff[$name]['name'] = $name;
+    $diff[$name]['old'] = $info['old']['version'];
+    $diff[$name]['new'] = $info['new']['version'];
+    $diff[$name]['notices'] = implode($info['notices'],', ') . '.';
   }
 
   if (drush_get_option('list', TRUE)) {
     unset($diff['header']);
     $new = array();
     foreach ($diff as $name => $info) {
-      $new[] = $name . '-7.x-' . $info['new'];
+      if (isset($info['new'])) {
+        $new[] = $name . '-7.x-' . $info['new'];
+      }
     }
     return implode($new, ' ');
   }
