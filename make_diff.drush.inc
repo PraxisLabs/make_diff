@@ -105,7 +105,7 @@ function drush_make_diff($old_makefile, $new_makefile) {
     $new = array();
     foreach ($diff as $name => $info) {
       if (isset($info['new'])) {
-        $new[] = $name . '-7.x-' . $info['new'];
+        $new[] = $name . '-' .  $new_info['core'] . '-' . $info['new'];
       }
     }
     return implode($new, ' ');
