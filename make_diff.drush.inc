@@ -58,12 +58,17 @@ function drush_make_diff($old_makefile, $new_makefile) {
       $list[$name]['notices'][] = 'new project added';
     }
     elseif (!isset($info['new']) && isset($info['old'])) {
-      $list[$name]['notices'][] = 'project removed';
+      $list[$name]['notices'][] = 'WARNING! project removed';
     }
     else {
       // Version changes
       if (version_compare($info['new']['version'], $info['old']['version'], '>')) {
-        $list[$name]['notices']['version'] = 'version upgraded';
+        if (substr($info['new']['version'], 0, 1) > substr($info['old']['version'], 0, 1)) {
+          $list[$name]['notices']['version'] = 'WARNING! Major version changed';
+        }
+        else {
+          $list[$name]['notices']['version'] = 'version upgraded';
+        }
       }
       elseif (version_compare($info['old']['version'], $info['new']['version'], '>')) {
         $list[$name]['notices']['version'] = 'WARNING! version downgraded';
